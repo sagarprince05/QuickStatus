@@ -11,7 +11,11 @@ import {
   Image,
   Modal,
   Dimensions,
+  Alert,
+  Platform,
 } from 'react-native';
+import Share from 'react-native-share';
+import RNFS from 'react-native-fs';
 import {getAllImages, ALL_TAGS, Image as AppImage} from './data';
 
 const {width} = Dimensions.get('window');
@@ -44,6 +48,25 @@ export default function App(): React.JSX.Element {
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     );
+  };
+
+  const handleShare = async (image: AppImage) => {
+    try {
+      const imageSource = Image.resolveAssetSource(image.uri);
+
+      const shareOptions = {
+        title: 'Share Image',
+        message: 'Check out this image from Quick Status',
+        url: imageSource.uri,
+        type: 'image/jpeg',
+      };
+
+      await Share.open(shareOptions);
+    } catch (error: any) {
+      if (error.message !== 'User did not share') {
+        Alert.alert('Error', 'Failed to share image');
+      }
+    }
   };
 
   return (
@@ -122,19 +145,16 @@ export default function App(): React.JSX.Element {
         contentContainerStyle={styles.feedContent}
         showsVerticalScrollIndicator={false}>
         {filteredImages.map(item => (
-          <TouchableOpacity
-            key={item.id}
-            style={styles.feedItem}
-            onPress={() => setViewingImage(item)}>
-            <Image source={item.uri} style={styles.feedImage} resizeMode="cover" />
-            <View style={styles.feedTags}>
-              {item.tags.map((tag, idx) => (
-                <View key={idx} style={styles.feedTag}>
-                  <Text style={styles.feedTagText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          </TouchableOpacity>
+          <View key={item.id} style={styles.feedItem}>
+            <TouchableOpacity onPress={() => setViewingImage(item)}>
+              <Image source={item.uri} style={styles.feedImage} resizeMode="cover" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={() => handleShare(item)}>
+              <Text style={styles.shareIcon}>↗</Text>
+            </TouchableOpacity>
+          </View>
         ))}
         {filteredImages.length === 0 && (
           <View style={styles.emptyState}>
@@ -160,20 +180,11 @@ export default function App(): React.JSX.Element {
             onPress={() => setViewingImage(null)}>
             <View style={styles.modalContainer}>
               {viewingImage && (
-                <>
-                  <Image
-                    source={viewingImage.uri}
-                    style={styles.modalImage}
-                    resizeMode="contain"
-                  />
-                  <View style={styles.modalInfo}>
-                    {viewingImage.tags.map((tag, idx) => (
-                      <View key={idx} style={styles.modalTag}>
-                        <Text style={styles.modalTagText}>{tag}</Text>
-                      </View>
-                    ))}
-                  </View>
-                </>
+                <Image
+                  source={viewingImage.uri}
+                  style={styles.modalImage}
+                  resizeMode="contain"
+                />
               )}
             </View>
           </TouchableOpacity>
@@ -182,6 +193,13 @@ export default function App(): React.JSX.Element {
             onPress={() => setViewingImage(null)}>
             <Text style={styles.modalCloseText}>✕</Text>
           </TouchableOpacity>
+          {viewingImage && (
+            <TouchableOpacity
+              style={styles.modalShareButton}
+              onPress={() => handleShare(viewingImage)}>
+              <Text style={styles.shareIcon}>↗</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </Modal>
     </SafeAreaView>
@@ -299,28 +317,32 @@ const styles = StyleSheet.create({
     backgroundColor: CARD_BG,
     borderWidth: 1,
     borderColor: BORDER,
+    position: 'relative',
   },
   feedImage: {
     width: width - 16,
     height: width - 16,
   },
-  feedTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: 12,
-    gap: 8,
-  },
-  feedTag: {
+  shareButton: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: ACCENT,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.8,
+    shadowRadius: 3,
+    elevation: 5,
   },
-  feedTagText: {
+  shareIcon: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontSize: 24,
+    fontWeight: 'bold',
   },
 
   emptyState: {
@@ -369,34 +391,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 400,
   },
-  modalInfo: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: BORDER,
-  },
-  modalTag: {
-    backgroundColor: ACCENT,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  modalTagText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
   modalClose: {
     position: 'absolute',
     top: 16,
     right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
@@ -406,5 +407,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  modalShareButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: '50%',
+    marginRight: -25,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.8,
+    shadowRadius: 3,
+    elevation: 5,
   },
 });

@@ -12,10 +12,8 @@ import {
   Modal,
   Dimensions,
   Alert,
-  Platform,
+  Share,
 } from 'react-native';
-import Share from 'react-native-share';
-import RNFS from 'react-native-fs';
 import {getAllImages, ALL_TAGS, Image as AppImage} from './data';
 
 const {width} = Dimensions.get('window');
@@ -54,18 +52,14 @@ export default function App(): React.JSX.Element {
     try {
       const imageSource = Image.resolveAssetSource(image.uri);
 
-      const shareOptions = {
-        title: 'Share Image',
+      await Share.share({
         message: 'Check out this image from Quick Status',
         url: imageSource.uri,
-        type: 'image/jpeg',
-      };
-
-      await Share.open(shareOptions);
+        title: 'Share Image',
+      });
     } catch (error: any) {
-      if (error.message !== 'User did not share') {
-        Alert.alert('Error', 'Failed to share image');
-      }
+      console.error('Error sharing:', error);
+      Alert.alert('Error', 'Failed to share image. Please try again.');
     }
   };
 

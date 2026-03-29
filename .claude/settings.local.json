@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for dir:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/Prince/Desktop/AI_Apps/craffto/all images/**)",
+      "Bash(done)"
+    ]
+  }
+}
